@@ -4,34 +4,98 @@ import styles from '../styles/Home.module.css'
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+
 export default function Home() {
   const [search_query, SetSearchQuery] = useState();
   const [searchBarFocus, SetSearchBarFocus] = useState(false);
-  const [products, setProducts] = useState([]);
+  // const [products, setProducts] = useState([]);
+  const [recent_query, SetRecentQuery] = useState(()=>new Set());
+  const [popular_query, SetPopularQuery] = useState([]);
+
+  const category = ["cocacola", "bread", "milk", "egg"]
   const SearchqueryChange = (e) => {
     SetSearchQuery(e.target.value)
+    axios.get(`https://cors-anywhere.herokuapp.com/https://api.matspar.se/autocomplete?query=${e.target.value}`)
+    .then(res => {
+      console.log(res.data.suggestions)
+      SetPopularQuery(res.data.suggestions)
+    })
   }
 
   const CancelSearch = (e) => {
     SetSearchBarFocus(false)
+    SetSearchQuery('')
+  }
+  //remove each recent search record
+  const RemoveRecentQuery = (q) => {
+    SetRecentQuery(prev => {
+      const next = new Set(prev);
+      next.delete(q);
+      return next;
+    });
+  }
+  const myLoader = ({ src, width, quality }) => {
+    return `https://d1ax460061ulao.cloudfront.net/140x150/${src[0]}/${src[1]}/${src}.jpg`
   }
 
-  useEffect(() => {
-    axios.post('https://api.matspar.se/slug',
+  const searchProduct = (query) => {
+    console.log("-----------", query)
+    SetRecentQuery(prev => new Set(prev).add(query))
+    setProducts(FetchData(query))
+    console.log(">>>>>>>>>", recent_query)
+    SetSearchBarFocus(false)
+    SetSearchQuery('')
+  }
+
+  const FetchData = async (Squery) => {
+    axios.post('https://cors-anywhere.herokuapp.com/https://api.matspar.se/slug',
       {
         slug : "kategori",
-        query : {"q" : "cocacola"}
+        query : {"q" : Squery}
       },
       {
         headers : {
-          'content-type': 'application/json'
+          'Access-Control-Allow-Origin': '*',
+          'content-type': 'application/json',
+          // 'origin' : window.location.protocol + '//' + window.location.host
         }
       }
       )
     .then(response => {
-      console.log(response.data);
+      console.log(response.data.payload.products)
+      return response.data.payload.products; 
     });
-  },[])
+  }
+  
+  function ItemList(query){
+    const products = FetchData(query)
+    console.log("----------",products)
+    return(
+      <div className={styles.tab__content}>
+        <div className={styles.tabContent_container}>
+          {/* {products.map((product, index)=>
+            <div className={styles.productItem} key={index}>
+              <div className={styles.productLogo}>
+                <Image
+                  loader={myLoader}
+                  src={product.image}
+                  alt="product image"
+                  width="0"
+                  height="0"
+                  style={{ width: 'auto', height: 'auto', maxHeight : '150px'}}
+                  // priority
+                />
+              </div>
+              <p className={styles.productName}>{product.name}</p>
+              <p className={styles.productBrand}>{product.brand}</p>
+              <p className={styles.productPrice}>${product.price}</p>
+            </div>
+          )} */}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <Head>
@@ -59,16 +123,23 @@ export default function Home() {
               width={20}
               height={20}
               priority
+              onClick={(e)=>{
+                searchProduct(search_query)
+              }}
             />
             <input className={styles.searchbar} placeholder='Search Product' value={search_query} onFocus={(e) => {SetSearchBarFocus(true)}} onChange={SearchqueryChange}/>
-            <Image
-              src="/Search.png"
-              alt="product image"
-              width={20}
-              height={20}
-              priority
-              onClick={(e) => {CancelSearch()}}
-            />
+            {searchBarFocus ?
+              <Image
+                src="/close.png"
+                alt="product image"
+                width={20}
+                height={20}
+                priority
+                onClick={(e) => {CancelSearch()}}
+              />
+              :
+              <></>
+            }
           </div>
         </div>
         
@@ -79,53 +150,59 @@ export default function Home() {
                 <p>Popular searches</p>
               </div>
               <div className={styles.searchResult}>
-                <div className={styles.searchResultItem}>
-                  <p>Coca cola</p>
-                  <Image
-                    src="/Search.png"
-                    width={15}
-                    height={15}
-                    priority
-                  />
-                </div>
-                <div className={styles.searchResultItem}>
-                  <p>Coca Cola Zero</p>
-                  <Image
-                    src="/Search.png"
-                    width={15}
-                    height={15}
-                    priority
-                  />
-                </div>
+                {popular_query.length > 0 ? 
+                  popular_query.map((suggestion, index) => 
+                  <div className={styles.searchResultItem} key={index}>
+                    <p>{suggestion.text}</p>
+                    <Image
+                      src="/Search.png"
+                      alt='search Icon'
+                      width={15}
+                      height={15}
+                      priority
+                      onClick={(e)=>{
+                        searchProduct(suggestion.text)
+                      }}
+                    />
+                  </div>
+                  )
+                  :
+                  <></>
+                }
               </div>
             </>
             : 
             <>
               <div className={styles.searchHeader}>
                 <p>Recent searches</p>
-                <p>Clear all</p>
+                {recent_query? 
+                  <p onClick={(e)=>{
+                    SetRecentQuery(prev => new Set(prev).clear())
+                  }}>
+                    Clear all
+                  </p>
+                  : <></>}
               </div>
               <div className={styles.searchResult}>
-                <div className={styles.searchResultItem}>
-                  <p>Coca cola</p>
-                  <Image
-                    src="/close.png"
-                    alt="product image"
-                    width={15}
-                    height={15}
-                    priority
-                  />
-                </div>
-                <div className={styles.searchResultItem}>
-                  <p>Coca cola</p>
-                  <Image
-                    src="/close.png"
-                    alt="product image"
-                    width={15}
-                    height={15}
-                    priority
-                  />
-                </div>
+              {recent_query ?
+                Array.from(recent_query).map((rec_query, index)=>
+                  <div className={styles.searchResultItem} key={index}>
+                    <p>{rec_query}</p>
+                    <Image
+                      src="/close.png"
+                      alt="product image"
+                      width={15}
+                      height={15}
+                      priority
+                      onClick={(e)=>{
+                        RemoveRecentQuery(rec_query)
+                      }}
+                    />
+                  </div>
+                )
+                :
+                <></>
+              }
               </div>
             </>
         
@@ -136,79 +213,41 @@ export default function Home() {
             </p>
             <div className={styles.container}>
               <div className={styles.tab_wrap}>
-                <input type="radio" id="tab1" name="tabGroup1" className={styles.tab} />
+                <input type="radio" id="tab1" name="category" className={styles.tab}/>
                 <label htmlFor="tab1">Trendy foods</label>
 
-                <input type="radio" id="tab2" name="tabGroup1" className={styles.tab} />
+                <input type="radio" id="tab2" name="category" className={styles.tab}/>
                 <label htmlFor="tab2">Bread</label>
 
-                <input type="radio" id="tab3" name="tabGroup1" className={styles.tab} />
+                <input type="radio" id="tab3" name="category" className={styles.tab}/>
                 <label htmlFor="tab3">Milk</label>
 
-                <input type="radio" id="tab4" name="tabGroup1" className={styles.tab} />
+                <input type="radio" id="tab4" name="category" className={styles.tab}/>
                 <label htmlFor="tab4">Egg</label>
 
-                <div className={styles.tab__content}>
+                {/* <div className={styles.tab__content}>
                   <div className={styles.tabContent_container}>
-                    <div className={styles.productItem}>
-                      <div className={styles.productLogo}>
-                        <Image
-                          src="/juice.png"
-                          alt="product image"
-                          width={28}
-                          height={98}
-                          priority
-                        />
+                    {products.map((product, index)=>
+                      <div className={styles.productItem} key={index}>
+                        <div className={styles.productLogo}>
+                          <Image
+                            loader={myLoader}
+                            src={product.image}
+                            alt="product image"
+                            width="0"
+                            height="0"
+                            style={{ width: 'auto', height: 'auto', maxHeight : '150px'}}
+                            // priority
+                          />
+                        </div>
+                        <p className={styles.productName}>{product.name}</p>
+                        <p className={styles.productBrand}>{product.brand}</p>
+                        <p className={styles.productPrice}>${product.price}</p>
                       </div>
-                      <p className={styles.productName}>Product Name</p>
-                      <p className={styles.productBrand}>Brand</p>
-                      <p className={styles.productPrice}>$799</p>
-                    </div>
-                    <div className={styles.productItem}>
-                      <div className={styles.productLogo}>
-                        <Image
-                          src="/juice.png"
-                          alt="product image"
-                          width={28}
-                          height={98}
-                          priority
-                        />
-                      </div>
-                      <p className={styles.productName}>Product Name</p>
-                      <p className={styles.productBrand}>Brand</p>
-                      <p className={styles.productPrice}>$799</p>
-                    </div>
-                    <div className={styles.productItem}>
-                      <div className={styles.productLogo}>
-                        <Image
-                          src="/juice.png"
-                          alt="product image"
-                          width={28}
-                          height={98}
-                          priority
-                        />
-                      </div>
-                      <p className={styles.productName}>Product Name</p>
-                      <p className={styles.productBrand}>Brand</p>
-                      <p className={styles.productPrice}>$799</p>
-                    </div>
-                    <div className={styles.productItem}>
-                      <div className={styles.productLogo}>
-                        <Image
-                          src="/juice.png"
-                          alt="product image"
-                          width={28}
-                          height={98}
-                          priority
-                        />
-                      </div>
-                      <p className={styles.productName}>Product Name</p>
-                      <p className={styles.productBrand}>Brand</p>
-                      <p className={styles.productPrice}>$799</p>
-                    </div>
+                    )}
                   </div>
-                  
-                </div>
+                </div> */}
+                <ItemList query={"cocacola"} />
 
                 <div className={styles.tab__content}>
                   <h3>Medium Section</h3>

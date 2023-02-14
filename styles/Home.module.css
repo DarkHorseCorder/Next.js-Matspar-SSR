@@ -142,6 +142,8 @@
 .productLogo{
   display: flex;
   justify-content: center;
+  height: 150px;
+  align-items: center;
 }
 .productName{
   font-weight: 600;
