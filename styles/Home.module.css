@@ -156,3 +156,28 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+@media screen and (min-width: 560px) {
+  .tabContent_container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media screen and (min-width: 870px) {
+  .tabContent_container {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media screen and (min-width: 1400px) {
+  .tabContent_container {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media screen and (min-width: 1800px) {
+  .tabContent_container {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+

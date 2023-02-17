@@ -11,7 +11,7 @@ export default function Home() {
   const [products, setProducts] = useState([]);
   const [recent_query, SetRecentQuery] = useState(()=>new Set());
   const [popular_query, SetPopularQuery] = useState([]);
-  const [category, setCategory] = useState("cocacola");
+  const [category, setCategory] = useState("");
   const [loading, setloading] = useState(false);
   const [searchState, setSearchState] = useState(true)
   const SearchqueryChange = (e) => {
@@ -26,8 +26,8 @@ export default function Home() {
   const CancelSearch = (e) => {
     SetSearchBarFocus(false)
     SetSearchQuery('')
-    setCategory('cocacola')
-    FetchData('cocacola')
+    setCategory('')
+    FetchData('')
     document.getElementById('search_part').style.width = "60%"
   }
   //remove each recent search record
@@ -199,7 +199,7 @@ export default function Home() {
               </p>
               <div className={styles.container} >
                 <div className={styles.tab_wrap}>
-                  <input type="radio" id="tab1" name="category" className={styles.tab} value={"cocacola"} checked={category == "cocacola"} onChange={(e) => {setCategory(e.target.value)}}/>
+                  <input type="radio" id="tab1" name="category" className={styles.tab} value={""} checked={category == ""} onChange={(e) => {setCategory(e.target.value)}}/>
                   <label htmlFor="tab1">Trendy foods</label>
                   <input type="radio" id="tab2" name="category" className={styles.tab} value={"bread"} checked={category == "bread"} onChange={(e) => {setCategory(e.target.value)}}/>
                   <label htmlFor="tab2">Bread</label>
