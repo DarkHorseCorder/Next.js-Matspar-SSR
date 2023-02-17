@@ -3,7 +3,6 @@ import Image from 'next/image'
 import styles from '../styles/Home.module.css'
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { NextProgressbarSpinner } from 'nextjs-progressbar-spinner'
 
 
 export default function Home() {
@@ -13,7 +12,8 @@ export default function Home() {
   const [recent_query, SetRecentQuery] = useState(()=>new Set());
   const [popular_query, SetPopularQuery] = useState([]);
   const [category, setCategory] = useState("cocacola");
-  const [loading, setloading] = useState(false)
+  const [loading, setloading] = useState(false);
+  const [searchState, setSearchState] = useState(true)
   const SearchqueryChange = (e) => {
     SetSearchQuery(e.target.value)
     axios.get(`/api/search_suggestion?query=${e.target.value}`)
@@ -26,6 +26,8 @@ export default function Home() {
   const CancelSearch = (e) => {
     SetSearchBarFocus(false)
     SetSearchQuery('')
+    setCategory('cocacola')
+    FetchData('cocacola')
     document.getElementById('search_part').style.width = "60%"
   }
   //remove each recent search record
@@ -42,12 +44,13 @@ export default function Home() {
 
   const searchProduct = (query) => {
     SetRecentQuery(prev => new Set(prev).add(query))
+    SetSearchQuery('')
     FetchData(query)
-    CancelSearch()
   }
 
   const FetchData = async (Squery) => {
     setProducts([])
+    setSearchState(false)
     setloading(true)
     axios.post("/api/getproducts", {
       Squery: Squery
@@ -59,6 +62,9 @@ export default function Home() {
     })
   }
   
+  useEffect(()=>{
+    SetSearchBarFocus(false)
+  },[])
   useEffect(()=>{
     FetchData(category)
   },[category])
@@ -100,6 +106,7 @@ export default function Home() {
               value={search_query} 
               onFocus={(e) => {
                 SetSearchBarFocus(true); 
+                setSearchState(true);
                 document.getElementById('search_part').style.width = "100%"
                 }
               }
@@ -118,112 +125,142 @@ export default function Home() {
             }
           </div>
         </div>
-        {searchBarFocus ? 
-          search_query ?
-            <>
-              <div className={styles.searchHeader}>
-                <p>Popular searches</p>
-              </div>
-              <div className={styles.searchResult}>
-                {popular_query.length > 0 ? 
-                  popular_query.map((suggestion, index) => 
-                  <div className={styles.searchResultItem} key={index}>
-                    <p>{suggestion.text}</p>
-                    <Image
-                      src="/Search.png"
-                      alt='search Icon'
-                      width={15}
-                      height={15}
-                      priority
-                      onClick={(e)=>{
-                        searchProduct(suggestion.text)
-                      }}
-                    />
-                  </div>
+        {searchBarFocus? 
+          searchState?
+            search_query ?
+              <>
+                <div className={styles.searchHeader}>
+                  <p>Popular searches</p>
+                </div>
+                <div className={styles.searchResult}>
+                  {popular_query.length > 0 ? 
+                    popular_query.map((suggestion, index) => 
+                    <div className={styles.searchResultItem} key={index}>
+                      <p>{suggestion.text}</p>
+                      <Image
+                        src="/Search.png"
+                        alt='search Icon'
+                        width={15}
+                        height={15}
+                        priority
+                        onClick={(e)=>{
+                          searchProduct(suggestion.text)
+                        }}
+                      />
+                    </div>
+                    )
+                    :
+                    <></>
+                  }
+                </div>
+              </>
+              : 
+              <>
+                <div className={styles.searchHeader}>
+                  <p>Recent searches</p>
+                  {recent_query? 
+                    <p onClick={(e)=>{
+                      SetRecentQuery(prev => new Set(prev).clear())
+                    }}>
+                      Clear all
+                    </p>
+                    : <></>}
+                </div>
+                <div className={styles.searchResult}>
+                {recent_query ?
+                  Array.from(recent_query).map((rec_query, index)=>
+                    <div className={styles.searchResultItem} key={index}>
+                      <p onClick={(e) => {
+                        searchProduct(rec_query)
+                      }}>{rec_query}</p>
+                      <Image
+                        src="/close.png"
+                        alt="product image"
+                        width={15}
+                        height={15}
+                        priority
+                        onClick={(e)=>{
+                          RemoveRecentQuery(rec_query)
+                        }}
+                      />
+                    </div>
                   )
                   :
                   <></>
                 }
-              </div>
-            </>
-            : 
-            <>
-              <div className={styles.searchHeader}>
-                <p>Recent searches</p>
-                {recent_query? 
-                  <p onClick={(e)=>{
-                    SetRecentQuery(prev => new Set(prev).clear())
-                  }}>
-                    Clear all
-                  </p>
-                  : <></>}
-              </div>
-              <div className={styles.searchResult}>
-              {recent_query ?
-                Array.from(recent_query).map((rec_query, index)=>
-                  <div className={styles.searchResultItem} key={index}>
-                    <p>{rec_query}</p>
-                    <Image
-                      src="/close.png"
-                      alt="product image"
-                      width={15}
-                      height={15}
-                      priority
-                      onClick={(e)=>{
-                        RemoveRecentQuery(rec_query)
-                      }}
-                    />
-                  </div>
-                )
-                :
-                <></>
-              }
-              </div>
-            </>
-          :
-          <div>
-            <p className={styles.title}>
-              Find your favorite products now.
-            </p>
-            <div className={styles.container} >
-              <div className={styles.tab_wrap}>
-                <input type="radio" id="tab1" name="category" className={styles.tab} value={"cocacola"} checked={category == "cocacola"} onChange={(e) => {setCategory(e.target.value)}}/>
-                <label htmlFor="tab1">Trendy foods</label>
-                <input type="radio" id="tab2" name="category" className={styles.tab} value={"bread"} checked={category == "bread"} onChange={(e) => {setCategory(e.target.value)}}/>
-                <label htmlFor="tab2">Bread</label>
-                <input type="radio" id="tab3" name="category" className={styles.tab} value={"milk"} checked={category == "milk"} onChange={(e) => {setCategory(e.target.value)}}/>
-                <label htmlFor="tab3">Milk</label>
-                <input type="radio" id="tab4" name="category" className={styles.tab} value={"egg"} checked={category == "egg"} onChange={(e) => {setCategory(e.target.value)}}/>
-                <label htmlFor="tab4">Egg</label>
-              </div>
-              {loading ? 
-                <div className={styles.loader}></div> 
-                :
-                <div className={styles.tab__content}>
-                  <div className={styles.tabContent_container}>
-                    {products.map((product, index)=>
-                      <div className={styles.productItem} key={index}>
-                        <div className={styles.productLogo}>
-                          <Image
-                            loader={myLoader}
-                            src={product.image}
-                            alt="product image"
-                            width="0"
-                            height="0"
-                            style={{ width: 'auto', height: 'auto', maxHeight : '150px'}}
-                          />
-                        </div>
-                        <p className={styles.productName}>{product.name}</p>
-                        <p className={styles.productBrand}>{product.brand}</p>
-                        <p className={styles.productPrice}>${product.price}</p>
-                      </div>
-                    )}
-                  </div>
                 </div>
-                }
+              </>
+            :
+            <></>
+          :
+            <div>
+              <p className={styles.title}>
+                Find your favorite products now.
+              </p>
+              <div className={styles.container} >
+                <div className={styles.tab_wrap}>
+                  <input type="radio" id="tab1" name="category" className={styles.tab} value={"cocacola"} checked={category == "cocacola"} onChange={(e) => {setCategory(e.target.value)}}/>
+                  <label htmlFor="tab1">Trendy foods</label>
+                  <input type="radio" id="tab2" name="category" className={styles.tab} value={"bread"} checked={category == "bread"} onChange={(e) => {setCategory(e.target.value)}}/>
+                  <label htmlFor="tab2">Bread</label>
+                  <input type="radio" id="tab3" name="category" className={styles.tab} value={"milk"} checked={category == "milk"} onChange={(e) => {setCategory(e.target.value)}}/>
+                  <label htmlFor="tab3">Milk</label>
+                  <input type="radio" id="tab4" name="category" className={styles.tab} value={"egg"} checked={category == "egg"} onChange={(e) => {setCategory(e.target.value)}}/>
+                  <label htmlFor="tab4">Egg</label>
+                </div>
+              </div>
             </div>
-          </div>
-        }
+            }
+            {searchState?
+              <></>
+              :
+              loading ? 
+              <div className={styles.loader}></div> 
+              :
+              <div className={styles.tab__content}>
+                <div className={styles.tabContent_container}>
+                  {
+                    products.length > 0 ?
+                      products.map((product, index)=>
+                        <div className={styles.productItem} key={index}>
+                          <div style={{padding : '10px'}}>
+                            <div className={styles.productLogo}>
+                              {product.image == ""?
+                                <Image
+                                  src="/matspar.jpg"
+                                  alt="product image"
+                                  width="0"
+                                  height="0"
+                                  style={{ width: 'auto', height: 'auto', minWidth : '100px', maxHeight : '150px'}}
+                                />
+                                :
+                                <Image
+                                  loader={myLoader}
+                                  src={product.image}
+                                  alt="product image"
+                                  width="0"
+                                  height="0"
+                                  style={{ width: 'auto', height: 'auto', maxHeight : '150px'}}
+                                />
+                              }
+                              
+                            </div>
+                            <p className={styles.productName}>{product.name}</p>
+                            <p className={styles.productBrand}>{product.brand}</p>
+                            <p className={styles.productPrice}>${product.price}</p>
+                          </div>
+                        </div>
+                      )
+                    :
+                    <div>
+                      <p>No result</p>
+                    </div>
+                    }
+                </div>
+              </div>
+            }
+          {/* </> */}
+        {/* } */}
       </main>
     </>
   )
