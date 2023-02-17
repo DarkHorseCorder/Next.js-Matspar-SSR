@@ -3,19 +3,20 @@ import Image from 'next/image'
 import styles from '../styles/Home.module.css'
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { NextProgressbarSpinner } from 'nextjs-progressbar-spinner'
 
 
 export default function Home() {
   const [search_query, SetSearchQuery] = useState();
   const [searchBarFocus, SetSearchBarFocus] = useState(false);
-  // const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState([]);
   const [recent_query, SetRecentQuery] = useState(()=>new Set());
   const [popular_query, SetPopularQuery] = useState([]);
-
-  const category = ["cocacola", "bread", "milk", "egg"]
+  const [category, setCategory] = useState("cocacola");
+  const [loading, setloading] = useState(false)
   const SearchqueryChange = (e) => {
     SetSearchQuery(e.target.value)
-    axios.get(`https://cors-anywhere.herokuapp.com/https://api.matspar.se/autocomplete?query=${e.target.value}`)
+    axios.get(`/api/search_suggestion?query=${e.target.value}`)
     .then(res => {
       console.log(res.data.suggestions)
       SetPopularQuery(res.data.suggestions)
@@ -25,6 +26,7 @@ export default function Home() {
   const CancelSearch = (e) => {
     SetSearchBarFocus(false)
     SetSearchQuery('')
+    document.getElementById('search_part').style.width = "60%"
   }
   //remove each recent search record
   const RemoveRecentQuery = (q) => {
@@ -39,62 +41,27 @@ export default function Home() {
   }
 
   const searchProduct = (query) => {
-    console.log("-----------", query)
     SetRecentQuery(prev => new Set(prev).add(query))
-    setProducts(FetchData(query))
-    console.log(">>>>>>>>>", recent_query)
-    SetSearchBarFocus(false)
-    SetSearchQuery('')
+    FetchData(query)
+    CancelSearch()
   }
 
   const FetchData = async (Squery) => {
-    axios.post('https://cors-anywhere.herokuapp.com/https://api.matspar.se/slug',
-      {
-        slug : "kategori",
-        query : {"q" : Squery}
-      },
-      {
-        headers : {
-          'Access-Control-Allow-Origin': '*',
-          'content-type': 'application/json',
-          // 'origin' : window.location.protocol + '//' + window.location.host
-        }
-      }
-      )
-    .then(response => {
-      console.log(response.data.payload.products)
-      return response.data.payload.products; 
-    });
+    setProducts([])
+    setloading(true)
+    axios.post("/api/getproducts", {
+      Squery: Squery
+    })
+    .then((res) => {
+      console.log(res.data.products)
+      setProducts(res.data.products)
+      setloading(false)
+    })
   }
   
-  function ItemList(query){
-    const products = FetchData(query)
-    console.log("----------",products)
-    return(
-      <div className={styles.tab__content}>
-        <div className={styles.tabContent_container}>
-          {/* {products.map((product, index)=>
-            <div className={styles.productItem} key={index}>
-              <div className={styles.productLogo}>
-                <Image
-                  loader={myLoader}
-                  src={product.image}
-                  alt="product image"
-                  width="0"
-                  height="0"
-                  style={{ width: 'auto', height: 'auto', maxHeight : '150px'}}
-                  // priority
-                />
-              </div>
-              <p className={styles.productName}>{product.name}</p>
-              <p className={styles.productBrand}>{product.brand}</p>
-              <p className={styles.productPrice}>${product.price}</p>
-            </div>
-          )} */}
-        </div>
-      </div>
-    )
-  }
+  useEffect(()=>{
+    FetchData(category)
+  },[category])
 
   return (
     <>
@@ -116,7 +83,7 @@ export default function Home() {
             priority
           />
           }
-          <div className={styles.searchPart}>
+          <div id='search_part' className={styles.searchPart}>
             <Image
               src="/Search.png"
               alt="product image"
@@ -127,7 +94,16 @@ export default function Home() {
                 searchProduct(search_query)
               }}
             />
-            <input className={styles.searchbar} placeholder='Search Product' value={search_query} onFocus={(e) => {SetSearchBarFocus(true)}} onChange={SearchqueryChange}/>
+            <input 
+              className={styles.searchbar} 
+              placeholder='Search Product' 
+              value={search_query} 
+              onFocus={(e) => {
+                SetSearchBarFocus(true); 
+                document.getElementById('search_part').style.width = "100%"
+                }
+              }
+              onChange={SearchqueryChange}/>
             {searchBarFocus ?
               <Image
                 src="/close.png"
@@ -142,7 +118,6 @@ export default function Home() {
             }
           </div>
         </div>
-        
         {searchBarFocus ? 
           search_query ?
             <>
@@ -205,27 +180,26 @@ export default function Home() {
               }
               </div>
             </>
-        
           :
           <div>
             <p className={styles.title}>
               Find your favorite products now.
             </p>
-            <div className={styles.container}>
+            <div className={styles.container} >
               <div className={styles.tab_wrap}>
-                <input type="radio" id="tab1" name="category" className={styles.tab}/>
+                <input type="radio" id="tab1" name="category" className={styles.tab} value={"cocacola"} checked={category == "cocacola"} onChange={(e) => {setCategory(e.target.value)}}/>
                 <label htmlFor="tab1">Trendy foods</label>
-
-                <input type="radio" id="tab2" name="category" className={styles.tab}/>
+                <input type="radio" id="tab2" name="category" className={styles.tab} value={"bread"} checked={category == "bread"} onChange={(e) => {setCategory(e.target.value)}}/>
                 <label htmlFor="tab2">Bread</label>
-
-                <input type="radio" id="tab3" name="category" className={styles.tab}/>
+                <input type="radio" id="tab3" name="category" className={styles.tab} value={"milk"} checked={category == "milk"} onChange={(e) => {setCategory(e.target.value)}}/>
                 <label htmlFor="tab3">Milk</label>
-
-                <input type="radio" id="tab4" name="category" className={styles.tab}/>
+                <input type="radio" id="tab4" name="category" className={styles.tab} value={"egg"} checked={category == "egg"} onChange={(e) => {setCategory(e.target.value)}}/>
                 <label htmlFor="tab4">Egg</label>
-
-                {/* <div className={styles.tab__content}>
+              </div>
+              {loading ? 
+                <div className={styles.loader}></div> 
+                :
+                <div className={styles.tab__content}>
                   <div className={styles.tabContent_container}>
                     {products.map((product, index)=>
                       <div className={styles.productItem} key={index}>
@@ -237,7 +211,6 @@ export default function Home() {
                             width="0"
                             height="0"
                             style={{ width: 'auto', height: 'auto', maxHeight : '150px'}}
-                            // priority
                           />
                         </div>
                         <p className={styles.productName}>{product.name}</p>
@@ -246,22 +219,8 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                </div> */}
-                <ItemList query={"cocacola"} />
-
-                <div className={styles.tab__content}>
-                  <h3>Medium Section</h3>
                 </div>
-
-                <div className={styles.tab__content}>
-                  <h3>Long Section</h3>
-                </div>
-
-                <div className={styles.tab__content}>
-                  <h3>Short Section</h3>
-                </div>
-
-              </div>
+                }
             </div>
           </div>
         }
